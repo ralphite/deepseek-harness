@@ -30,6 +30,11 @@ export interface CmdlineArgs {
    * @returns the arguments in argv order; empty when the invocation carried none.
    */
   get(): readonly string[]
+  /**
+   * Read the user-facing launcher command for app help and startup messages.
+   * @returns the launcher name selected by the host; `dsh` by default.
+   */
+  launcherName(): string
 }
 
 /** Request bounded process exit; the launcher wires it to its shutdown controller. */
@@ -67,6 +72,8 @@ declare module '@deepseek-ai/cordis' {
 export interface CmdlineHost {
   /** The invocation's inner arguments, in argv order. */
   args: readonly string[]
+  /** User-facing launcher name; omitted hosts retain `dsh`. */
+  readonly launcherName?: string
   /** Bounded process-exit request. */
   exit: AppExit
   /** Successful startup signal for lifecycle work that must not mask boot failure. */
@@ -83,7 +90,8 @@ export interface CmdlineHost {
  */
 export function provideCmdline(ctx: Context, host: CmdlineHost): void {
   const snapshot: readonly string[] = Object.freeze([...host.args])
-  ctx.provide('cmdlineArgs', { get: () => snapshot })
+  const launcherName = host.launcherName ?? 'dsh'
+  ctx.provide('cmdlineArgs', { get: () => snapshot, launcherName: () => launcherName })
   ctx.provide('appExit', host.exit)
   if (host.ready !== undefined) ctx.provide('appReady', host.ready)
 }

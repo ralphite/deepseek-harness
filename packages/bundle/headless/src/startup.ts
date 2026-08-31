@@ -28,15 +28,15 @@ export interface HeadlessStartupValues {
  * This app's command: the task positional, its description, and its help text.
  * @returns a fresh program, so one process can parse more than once (tests).
  */
-function headlessCommand(): Command {
+function headlessCommand(launcherName: string): Command {
   return new Command()
-    .name('dsh --profile headless')
+    .name(`${launcherName} --profile headless`)
     .description('Answer one task, stream reasoning to stderr, print the final assistant message, and exit.')
     .helpOption('-h, --help', 'show this help')
     .argument('[task...]', 'the task text; multiple words are joined by spaces')
     .addHelpText('after', `
 Examples:
-  dsh --profile headless "run the tests"     answer one task and exit
+  ${launcherName} --profile headless "run the tests"     answer one task and exit
 `)
 }
 
@@ -47,10 +47,11 @@ Examples:
  * @param ctx - plugin context carrying the command line.
  */
 export function apply(ctx: Context): void {
-  const program = headlessCommand()
+  const launcherName = ctx.cmdlineArgs?.launcherName() ?? 'dsh'
+  const program = headlessCommand(launcherName)
   program.action(() => {
     const task = program.args.join(' ')
-    if (task.trim() === '') program.error('error: a task is required, for example: dsh --profile headless "run the tests"')
+    if (task.trim() === '') program.error(`error: a task is required, for example: ${launcherName} --profile headless "run the tests"`)
     ctx.provide(HEADLESS_STARTUP_SERVICE, { task } satisfies HeadlessStartupValues)
   })
   parseCmdline(ctx, program)

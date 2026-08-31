@@ -23,5 +23,7 @@ describe('Python runtime executable assets', () => {
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*')
     expect(result.stdout).toContain('node_modules/@deepseek-ai/dsh-skill-badge/assets/**/*')
+    expect(result.stdout).toContain('node_modules/@vscode/ripgrep-*/bin/rg')
+    expect(result.stdout).toContain('node_modules/@deepseek-ai/node-addon-landlock-run-*/bin/landlock-run')
   })
 })

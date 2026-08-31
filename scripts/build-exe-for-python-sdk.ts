@@ -57,6 +57,11 @@ const ASSET_GLOBS = [
   'node_modules/**/*.wasm',
   'node_modules/**/*.yaml',
   'node_modules/**/*.yml',
+  // Native helpers have no extension, so broad asset suffix globs do not see
+  // them. A sidecar-free pkg runtime materializes these exact embedded files.
+  'node_modules/@vscode/ripgrep-*/bin/rg',
+  'node_modules/@vscode/ripgrep-*/bin/rg.exe',
+  'node_modules/@deepseek-ai/node-addon-landlock-run-*/bin/landlock-run',
   // web-app builds this path dynamically, so pkg cannot discover the static frontend.
   'node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*',
   // skill-badge resolves both Markdown and image resources through import.meta.url.

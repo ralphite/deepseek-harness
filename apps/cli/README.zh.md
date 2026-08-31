@@ -4,6 +4,8 @@
 
 `dsh` 是唯一受支持的 Node 应用启动器；profile 由多个插件组合包 patch 层按顺序叠加而成，其上再应用用户自己的覆盖配置。SDK 与 ACP 都是 profile，而不是独立的公开 bin。Python 运行时 wheel 会打包同一个命令；SDK 默认使用 `sdk`，极简示例选择 `sdk-minimal`。[`src/args.ts`](src/args.ts) 负责命令语法，[`src/bin.ts`](src/bin.ts) 只加载选中的运行器。无效命令、来自其他模式的选项、配置错误和启动失败都会以非零状态退出。
 
+GitHub Linux 单文件发行版将此启动器安装为 `mydsh`。它保留同一套语法（`mydsh web`、`mydsh --profile headless "job"`），并在启动器和应用帮助中显示该名称。npm、源码和 Python 载体仍使用 `dsh`。单文件发行版的核心 profile 不要求系统 Node.js 或包管理器；`mydsh plugin` 仍要求 pnpm，因为它会按设计转发包管理参数。
+
 ## 入口模式
 
 | 命令 | 用途 |

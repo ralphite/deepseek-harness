@@ -35,7 +35,10 @@ afterEach(async () => {
  * @param args - the invocation's inner arguments.
  * @returns the resolved service value and observed runner/process effects.
  */
-async function bootStartup(args: string[]): Promise<{ task: HeadlessStartupValues | undefined; observed: Observed }> {
+async function bootStartup(
+  args: string[],
+  launcherName?: string,
+): Promise<{ task: HeadlessStartupValues | undefined; observed: Observed }> {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-headless-startup-'))
   const observed: Observed = { exits: [], out: '' }
   writeFileSync(join(dir, 'row.mjs'), 'export function apply(_ctx, config) { globalThis.__headlessStartupObserved.runnerConfig = config }\n')
@@ -70,7 +73,7 @@ export const apply = ctx => globalThis.__headlessStartupApply(ctx)
   const ctx = new Context()
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
-  provideCmdline(ctx, { args, exit: code => void observed.exits.push(code) })
+  provideCmdline(ctx, { args, ...launcherName === undefined ? {} : { launcherName }, exit: code => void observed.exits.push(code) })
   await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(join(dir, 'cordis.yml')).href } })
   await ctx.loader.await()
   disposers.push(async () => { await ctx.fiber.dispose() })
@@ -103,5 +106,12 @@ describe('headless command-line provider', () => {
     expect(task).toBeUndefined()
     expect(observed.runnerConfig).toBeUndefined()
     expect(observed.exits).toEqual([0])
+  })
+
+  it('renders the packaged launcher name in app help and usage errors', async () => {
+    const help = await bootStartup(['--help'], 'mydsh')
+    expect(help.observed.out).toContain('Usage: mydsh --profile headless')
+    const missing = await bootStartup([], 'mydsh')
+    expect(missing.observed.out).toContain('mydsh --profile headless')
   })
 })

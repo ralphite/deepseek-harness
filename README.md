@@ -16,6 +16,15 @@ Review the [safety notice](SAFETY.md) before running the project.
 
 ## Run
 
+### Personal `mydsh` Linux build
+
+This fork publishes a standalone `mydsh` binary for glibc 2.28+ Linux on x86_64 and arm64:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ralphite/deepseek-harness/master/scripts/install-mydsh.sh | sh
+mydsh web
+```
+
 ### Run from `npm`
 
 Install `Node.js`, then run:

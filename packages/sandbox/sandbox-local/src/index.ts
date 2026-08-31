@@ -33,6 +33,7 @@ import {
 } from '@deepseek-ai/node-addon-landlock-run'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import { materializeExecutableAsset } from '@deepseek-ai/dsh-executable-asset'
 import { SandboxProvider, SandboxUnavailableError } from '@deepseek-ai/dsh-sandbox'
 import type { ConfinedArgv, ConfinedSandboxMode, RunnerFailureRule, SandboxEnforcement, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 import type { SessionId } from '@deepseek-ai/dsh-session'
@@ -540,7 +541,7 @@ export class LocalSandboxProvider extends SandboxProvider {
 
   /** The Landlock launcher to probe and exec (test hook over the resolved one). */
   private landlockLauncher(): string {
-    return this.internals.landlockLauncher ?? landlockLauncherPath()
+    return this.internals.landlockLauncher ?? materializeExecutableAsset(landlockLauncherPath())
   }
 
   /** The `sandbox-exec` executable to probe and exec (test hook over the system one). */

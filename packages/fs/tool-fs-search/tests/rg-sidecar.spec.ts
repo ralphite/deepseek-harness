@@ -1,9 +1,10 @@
 import { join, parse } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { dependencyRgPath, existsSync } = vi.hoisted(() => ({
+const { dependencyRgPath, existsSync, materializeExecutableAsset } = vi.hoisted(() => ({
   dependencyRgPath: '/node_modules/@vscode/ripgrep/bin/rg',
   existsSync: vi.fn(),
+  materializeExecutableAsset: vi.fn((source: string) => source),
 }))
 const originalPlatform = process.platform
 const originalExecPath = process.execPath
@@ -14,10 +15,13 @@ vi.mock('node:fs', async (importOriginal) => {
 })
 
 vi.mock('@vscode/ripgrep', () => ({ rgPath: dependencyRgPath }))
+vi.mock('@deepseek-ai/dsh-executable-asset', () => ({ materializeExecutableAsset }))
 
 beforeEach(() => {
   vi.resetModules()
   existsSync.mockReset()
+  materializeExecutableAsset.mockClear()
+  materializeExecutableAsset.mockImplementation((source: string) => source)
   Reflect.deleteProperty(process, 'pkg')
   Reflect.defineProperty(process, 'platform', { configurable: true, enumerable: true, value: originalPlatform })
   process.execPath = originalExecPath
@@ -40,6 +44,7 @@ describe('ripgrep resolution', () => {
 
     await expect(resolveRgPath()).resolves.toBe(sidecar)
     expect(existsSync).toHaveBeenCalledWith(sidecar)
+    expect(materializeExecutableAsset).not.toHaveBeenCalled()
   })
 
   it('uses a conventional executable name for the Windows ripgrep sidecar', async () => {
@@ -60,18 +65,21 @@ describe('ripgrep resolution', () => {
 
     await expect(resolveRgPath()).resolves.toBe(dependencyRgPath)
     expect(existsSync).not.toHaveBeenCalled()
+    expect(materializeExecutableAsset).toHaveBeenCalledWith(dependencyRgPath)
   })
 
-  it('uses the dependency binary when a packaged runtime has no sidecar', async () => {
+  it('materializes the dependency binary when a packaged runtime has no sidecar', async () => {
     Reflect.defineProperty(process, 'pkg', { configurable: true, value: {} })
     existsSync.mockReturnValue(false)
+    materializeExecutableAsset.mockReturnValue('/cache/native-executables/digest/rg')
     const { resolveRgPath } = await import('@deepseek-ai/dsh-tool-fs-search')
 
-    await expect(resolveRgPath()).resolves.toBe(dependencyRgPath)
+    await expect(resolveRgPath()).resolves.toBe('/cache/native-executables/digest/rg')
     const executable = parse(process.execPath)
     const sidecar = process.platform === 'win32'
       ? join(executable.dir, `${executable.name}-rg.exe`)
       : `${process.execPath}-rg`
     expect(existsSync).toHaveBeenCalledWith(sidecar)
+    expect(materializeExecutableAsset).toHaveBeenCalledWith(dependencyRgPath)
   })
 })

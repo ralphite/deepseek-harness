@@ -39,6 +39,7 @@
     "@deepseek-ai/dsh-session": "workspace:^"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-executable-asset": "workspace:^",
     "@deepseek-ai/dsh-sandbox-windows-acl": "workspace:^",
     "@deepseek-ai/dsh-util-values": "workspace:^",
     "@deepseek-ai/node-addon-landlock-run": "workspace:^",

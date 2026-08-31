@@ -61,14 +61,14 @@ interface BootOptions {
 const collect = (value: string, previous: string[] = []): string[] => [...previous, value]
 
 /** The launcher's own help text; each app prints its own. */
-const HELP_EXAMPLES = `
+const helpExamples = (launcherName: string): string => `
 Examples:
-  dsh --profile web                          boot the web profile (same as: dsh web)
-  dsh --profile headless "run the tests"     answer one task, print the result, and exit
-  dsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
-  dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
-  dsh --profile web --help                   the web app's own flags and help
-  dsh plugin --profile tui add <package>     install a plugin into the tui profile
+  ${launcherName} --profile web                          boot the web profile (same as: ${launcherName} web)
+  ${launcherName} --profile headless "run the tests"     answer one task, print the result, and exit
+  ${launcherName} --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
+  ${launcherName} --profile tui --resume <session>       arguments after the launcher flags reach the app
+  ${launcherName} --profile web --help                   the web app's own flags and help
+  ${launcherName} plugin --profile tui add <package>     install a plugin into the tui profile
 `
 
 /**
@@ -107,18 +107,19 @@ function resolveBoot(program: Command, profile: string, options: BootOptions, ar
  * error.
  * @param argv - arguments after the Node binary and script.
  * @param version - version string printed by `--version`.
+ * @param launcherName - command name rendered in help and usage text.
  * @returns the resolved invocation.
  */
-export function parseDshArgs(argv: readonly string[], version: string): DshInvocation {
+export function parseDshArgs(argv: readonly string[], version: string, launcherName = 'dsh'): DshInvocation {
   let resolved: DshInvocation | undefined
   // Annotated, not inferred: the actions below call back into `program`, and an
   // inferred type would be circular through its own chain.
   const program: Command = new Command()
   program
-    .name('dsh')
+    .name(launcherName)
     .version(version, '-V, --version', 'output the version number')
-    .description('dsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch layers under your own overrides.')
-    .addHelpText('after', HELP_EXAMPLES)
+    .description(`${launcherName}: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch layers under your own overrides.`)
+    .addHelpText('after', helpExamples(launcherName))
     .exitOverride()
     // The launcher's flags come first and end at the first token it does not
     // know; everything from there on belongs to the booted app, including
@@ -127,7 +128,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .allowUnknownOption()
     .passThroughOptions()
     .enablePositionalOptions()
-    .argument('[args...]', 'arguments for the booted profile\'s app (see: dsh --profile <name> --help)')
+    .argument('[args...]', `arguments for the booted profile's app (see: ${launcherName} --profile <name> --help)`)
     .option('--profile <name>', 'the profile under $DSH_HOME/profiles to boot')
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
     .option('--dump-config', 'print the composed profile tree and exit')
@@ -159,7 +160,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .allowUnknownOption()
     .passThroughOptions()
     .enablePositionalOptions()
-    .argument('[args...]', 'arguments for the web app (see: dsh web --help)')
+    .argument('[args...]', `arguments for the web app (see: ${launcherName} web --help)`)
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
     .option('--dump-config', 'print the composed web-profile tree (with the user layer and any --patch) and exit')
     .option('--dump-default-config', 'print the web profile\'s bundle layers (no user layer) and exit')

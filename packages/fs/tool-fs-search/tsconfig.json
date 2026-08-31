@@ -19,6 +19,9 @@
       "path": "../../util/output-retention"
     },
     {
+      "path": "../../util/executable-asset"
+    },
+    {
       "path": "../../llm/llm"
     },
     {

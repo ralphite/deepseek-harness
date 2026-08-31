@@ -22,6 +22,7 @@
 import { existsSync } from 'node:fs'
 import { isAbsolute, join, parse, relative, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import { materializeExecutableAsset } from '@deepseek-ai/dsh-executable-asset'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { ItemRetainer, TextRetainer } from '@deepseek-ai/dsh-output-retention'
 import type { RetainedItems } from '@deepseek-ai/dsh-output-retention'
@@ -159,11 +160,13 @@ let rgPathPromise: Promise<string> | undefined
 /**
  * The packaged ripgrep binary path, resolved lazily once per process.
  *
- * A single-file runtime uses the executable's `-rg` sidecar because a native
- * helper cannot be spawned from pkg's virtual filesystem. Node-mode builds
- * fall back to the platform package selected by `@vscode/ripgrep`. Resolving
- * at the call boundary keeps a missing or corrupt binary at the first search
- * call as `SEARCH_FAILED`, rather than failing the Loader composition.
+ * A Python single-file runtime prefers the executable's `-rg` sidecar. A
+ * sidecar-free pkg runtime materializes the dependency binary into the native
+ * executable cache because an operating system cannot spawn it from pkg's
+ * virtual filesystem. Node-mode builds use the dependency path unchanged.
+ * Resolving at the call boundary keeps a missing or corrupt binary at the
+ * first search call as `SEARCH_FAILED`, rather than failing the Loader
+ * composition.
  *
  * @returns the packaged binary's absolute path; the memoized promise rejects
  *   when the platform package cannot be resolved.
@@ -175,7 +178,7 @@ export function resolveRgPath(): Promise<string> {
       ? join(executable.dir, `${executable.name}-rg.exe`)
       : `${process.execPath}-rg`
     if ('pkg' in process && existsSync(executableSidecar)) return executableSidecar
-    return (await import('@vscode/ripgrep')).rgPath
+    return materializeExecutableAsset((await import('@vscode/ripgrep')).rgPath)
   })
   return rgPathPromise
 }

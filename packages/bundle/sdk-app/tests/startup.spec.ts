@@ -27,7 +27,11 @@ afterEach(() => {
 })
 
 /** Run the provider with captured command output and exit requests. */
-function start(args: string[], config: Config = {}): { ctx: Context; exits: number[]; out: () => string; stdin: TestStdin } {
+function start(
+  args: string[],
+  config: Config = {},
+  launcherName?: string,
+): { ctx: Context; exits: number[]; out: () => string; stdin: TestStdin } {
   const ctx = new Context()
   const exits: number[] = []
   const stdin = new TestStdin()
@@ -38,6 +42,7 @@ function start(args: string[], config: Config = {}): { ctx: Context; exits: numb
   internals.stderr = capture
   provideCmdline(ctx, {
     args,
+    ...launcherName === undefined ? {} : { launcherName },
     exit: code => void exits.push(code),
     ready: { onReady: (listener) => { listener(); return () => {} } },
   })
@@ -67,5 +72,9 @@ describe('SDK app startup', () => {
     const { out } = start(['--help'], { profile: 'sdk-minimal' })
     expect(out()).toContain('Usage: dsh --profile sdk-minimal')
     expect(out()).toContain('dsh --profile sdk-minimal')
+  })
+
+  it('renders the packaged launcher name in help', () => {
+    expect(start(['--help'], {}, 'mydsh').out()).toContain('Usage: mydsh --profile sdk')
   })
 })

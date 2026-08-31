@@ -221,6 +221,13 @@ describe('provideCmdline', () => {
     provideCmdline(ctx, { args, exit: () => {} })
     args.push('--tampered')
     expect(ctx.cmdlineArgs?.get()).toEqual(['--resume', 'abc'])
+    expect(ctx.cmdlineArgs?.launcherName()).toBe('dsh')
+  })
+
+  it('publishes an explicit launcher name beside the immutable arguments', () => {
+    const ctx = new Context()
+    provideCmdline(ctx, { args: [], launcherName: 'mydsh', exit: () => {} })
+    expect(ctx.cmdlineArgs?.launcherName()).toBe('mydsh')
   })
 
   it('refuses at load a program in which no command declares an action', async () => {

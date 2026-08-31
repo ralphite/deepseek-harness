@@ -634,6 +634,59 @@ describe('npm release workflows', () => {
   })
 })
 
+describe('mydsh GitHub release workflow', () => {
+  it('publishes a protected immutable prerelease from exactly two Linux builds', () => {
+    const workflow = loadWorkflow('.github/workflows/mydsh-release.yml')
+    const dispatch = workflowEvent(workflow, 'workflow_dispatch')
+    expect(dispatch).toMatchObject({ inputs: { version: { type: 'string', required: true } } })
+    expect(workflow.concurrency).toMatchObject({ group: 'mydsh-release-${{ inputs.version }}', 'cancel-in-progress': false })
+    const preflight = workflowJob(workflow, 'preflight')
+    const build = workflowJob(workflow, 'build')
+    const publish = workflowJob(workflow, 'publish')
+    const nativeWorkflow = loadWorkflow('.github/workflows/build-exe-for-python-sdk.yml')
+    const nativeBuild = workflowJob(nativeWorkflow, 'build')
+    expect(build).toMatchObject({
+      uses: './.github/workflows/build-exe-for-python-sdk.yml',
+      with: {
+        targets: 'node24-linux-x64,node24-linux-arm64',
+        mydsh: true,
+      },
+    })
+    expect(publish).toMatchObject({
+      environment: 'github-release',
+      permissions: { contents: 'write' },
+    })
+    if (!Array.isArray(preflight.steps) || !Array.isArray(publish.steps) || !Array.isArray(nativeBuild.steps)) {
+      throw new TypeError('mydsh release jobs must define steps')
+    }
+    const nativeSteps: unknown[] = nativeBuild.steps
+    const preflightCommands = preflight.steps.filter(isRecord).flatMap(step => typeof step.run === 'string' ? [step.run] : [])
+    const publishCommands = publish.steps.filter(isRecord).flatMap(step => typeof step.run === 'string' ? [step.run] : [])
+    expect(preflightCommands.join('\n')).toContain('mydsh-v')
+    expect(preflightCommands.join('\n')).toContain('MYDSH_DEFAULT_VERSION')
+    expect(preflightCommands.join('\n')).toContain('git show-ref --verify')
+    expect(preflightCommands.join('\n')).toContain('gh release view "$tag"')
+    expect(publishCommands.join('\n')).toContain('gh release view "$TAG"')
+    expect(publishCommands.join('\n')).toContain('git ls-remote --exit-code --tags')
+    expect(publishCommands.join('\n')).toContain('chmod 0755')
+    expect(publishCommands.join('\n')).toContain('sha256sum')
+    expect(publishCommands.join('\n')).toContain('--prerelease')
+    expect(publishCommands.join('\n')).toContain('--target "$GITHUB_SHA"')
+    expect(publishCommands.join('\n')).not.toContain('--verify-tag')
+    expect(publishCommands.join('\n')).toContain('dist-mydsh/mydsh-linux-x64')
+    expect(publishCommands.join('\n')).toContain('dist-mydsh/mydsh-linux-arm64')
+    expect(publishCommands.join('\n')).toContain('dist-mydsh/SHA256SUMS')
+    const nativeStepNames = nativeSteps.filter(isRecord).flatMap(step => typeof step.name === 'string' ? [step.name] : [])
+    const glibcCheck = nativeSteps.find(step => isRecord(step) && step.name === 'Check Linux GLIBC requirements')
+    expect(JSON.stringify(glibcCheck)).toContain('le 2.28')
+    expect(publishCommands.join('\n')).toContain('[ -x "dist-mydsh/$asset" ]')
+    expect(nativeStepNames).toContain('Run sidecar-free SDK filesystem-search smoke')
+    expect(nativeStepNames).toContain('Run sidecar-free Headless and Landlock smoke')
+    expect(nativeStepNames).toContain('Run mydsh in a manylinux 2.28 container without runtime dependencies')
+    expect(nativeStepNames).toContain('Run sidecar-free mydsh Web browser and restart smoke')
+  })
+})
+
 describe('Documentation site publication', () => {
   it('keeps Pages deployment dispatch-only from a dsh-v* tag', () => {
     const workflow = loadWorkflow('.github/workflows/docs-pages.yml')

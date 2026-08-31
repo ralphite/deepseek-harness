@@ -35,14 +35,14 @@ export const Config: z<Config> = z.object({
  * @param profile - selected profile name rendered in the command grammar.
  * @returns a fresh program for one invocation.
  */
-function sdkCommand(profile: string): Command {
+function sdkCommand(profile: string, launcherName: string): Command {
   return new Command()
-    .name(`dsh --profile ${profile}`)
+    .name(`${launcherName} --profile ${profile}`)
     .description('Serve DeepSeek Harness SDK clients over stdio JSON-RPC.')
     .helpOption('-h, --help', 'show this help')
     .addHelpText('after', `
 Example:
-  dsh --profile ${profile}     serve one SDK runtime until its client disconnects
+  ${launcherName} --profile ${profile}     serve one SDK runtime until its client disconnects
 `)
 }
 
@@ -53,7 +53,7 @@ Example:
  * @param config - selected profile identity for command help.
  */
 export function apply(ctx: Context, config: Config = {}): void {
-  const program = sdkCommand(config.profile ?? 'sdk')
+  const program = sdkCommand(config.profile ?? 'sdk', ctx.cmdlineArgs?.launcherName() ?? 'dsh')
   program.action(() => {
     exitOnStdinEnd(ctx, 'sdk-app.stdin')
     ctx.provide(SDK_APP_STARTUP_SERVICE, { accepted: true })

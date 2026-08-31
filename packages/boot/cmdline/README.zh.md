@@ -31,7 +31,7 @@ kind: "package-library"
 
 启动器向你的应用提供三样东西：
 
-- `ctx.cmdlineArgs`——本次调用的内层参数。读取它返回一份不可变快照，且绝不会消费或修改它们：`dsh --profile tui --resume abc` 给你的应用 `['--resume', 'abc']`。
+- `ctx.cmdlineArgs`——本次调用的内层参数与面向用户的启动器名称。读取参数会返回不可变快照，且绝不会消费或修改它们：`dsh --profile tui --resume abc` 给你的应用 `['--resume', 'abc']`；`launcherName()` 让应用帮助一致使用 `dsh` 或 GitHub 二进制的 `mydsh` 名称。
 - `ctx.appExit`——在整棵树关闭后请求进程退出的方式，接到启动器的关停控制器上。
 - `ctx.appReady`——成功启动信号，只在 Loader 树与 launcher 自有设置成功后提交。
 
@@ -90,7 +90,7 @@ kind: "package-library"
 
 ### 解析约定
 
-解析路径是一个只有两个所有者的小家族：`provideCmdline` 冻结宿主参数，并在任何配置树条目挂载前提供 `cmdlineArgs` 与 `appExit`；`parseCmdline` 针对不可变参数运行你的 commander program，把每个命令的 help、version 与错误输出都接到启动器上。被拒绝的值、`--help` 或 `--version` 会打印 commander 文本并请求 `ctx.appExit`，且不发布任何内容，因此依赖行绝不会激活；Loader 会把每行的 `!!js` 插值推迟到该行声明的注入全部激活之后。各导出的约定在代码中，不在本 README——见 [`src/index.ts`](src/index.ts)。
+解析路径是一个只有两个所有者的小家族：`provideCmdline` 冻结宿主参数和启动器名称，并在任何配置树条目挂载前提供 `cmdlineArgs` 与 `appExit`；`parseCmdline` 针对不可变参数运行你的 commander program，把每个命令的 help、version 与错误输出都接到启动器上。被拒绝的值、`--help` 或 `--version` 会打印 commander 文本并请求 `ctx.appExit`，且不发布任何内容，因此依赖行绝不会激活；Loader 会把每行的 `!!js` 插值推迟到该行声明的注入全部激活之后。各导出的约定在代码中，不在本 README——见 [`src/index.ts`](src/index.ts)。
 
 ### 源码地图
 

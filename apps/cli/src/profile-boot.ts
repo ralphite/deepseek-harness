@@ -182,6 +182,8 @@ export interface RunProfileOptions {
   patchFiles: readonly string[]
   /** The invocation's inner arguments, handed to the tree through `ctx.cmdlineArgs`. */
   args: readonly string[]
+  /** User-facing launcher command rendered by app help and startup messages. */
+  launcherName?: string
 }
 
 /**
@@ -257,6 +259,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     // to every app plugin that injects the argument snapshot.
     provideCmdline(hostCtx, {
       args: options.args,
+      ...(options.launcherName === undefined ? {} : { launcherName: options.launcherName }),
       exit: code => void shutdown.shutdown(code),
       ready: appReady.service,
     })

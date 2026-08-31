@@ -43,9 +43,9 @@ interface WebOptions {
  * This app's command: its flags, its description, and its help text.
  * @returns a fresh program, so one process can parse more than once (tests).
  */
-function webCommand(): Command {
+function webCommand(launcherName: string): Command {
   return new Command()
-    .name('dsh --profile web')
+    .name(`${launcherName} --profile web`)
     .description('Serve the DeepSeek Harness browser UI.')
     .helpOption('-h, --help', 'show this help')
     .option('--host <host>', 'bind host')
@@ -54,9 +54,9 @@ function webCommand(): Command {
     .option('--trusted-host <authority...>', 'extra authority the /api browser-trust fence accepts (host or host:port; repeatable)')
     .addHelpText('after', `
 Examples:
-  dsh --profile web                          serve on the composed host and port
-  dsh --profile web --no-open                serve without opening a browser
-  dsh --profile web --port 8080              serve on another port
+  ${launcherName} --profile web                          serve on the composed host and port
+  ${launcherName} --profile web --no-open                serve without opening a browser
+  ${launcherName} --profile web --port 8080              serve on another port
 `)
 }
 
@@ -68,7 +68,8 @@ Examples:
  * @param ctx - plugin context carrying the command line.
  */
 export function apply(ctx: Context): void {
-  const program = webCommand()
+  const launcherName = ctx.cmdlineArgs?.launcherName() ?? 'dsh'
+  const program = webCommand(launcherName)
   program.action(() => {
     const options = program.opts<WebOptions>()
     if (options.host === '0.0.0.0') {

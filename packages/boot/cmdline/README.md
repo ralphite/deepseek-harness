@@ -31,7 +31,7 @@ Your app reads the invocation's inner arguments at startup, and any number of it
 
 The launcher makes three things available to your app:
 
-- `ctx.cmdlineArgs` — the inner arguments of your invocation. Reading them returns an immutable snapshot and never consumes or changes them: `dsh --profile tui --resume abc` gives your app `['--resume', 'abc']`.
+- `ctx.cmdlineArgs` — the inner arguments and user-facing launcher name. Reading the arguments returns an immutable snapshot and never consumes or changes them: `dsh --profile tui --resume abc` gives your app `['--resume', 'abc']`; `launcherName()` lets app help use `dsh` or the GitHub binary's `mydsh` name consistently.
 - `ctx.appExit` — a way to ask the process to exit once the tree has shut down, wired to the launcher's shutdown controller.
 - `ctx.appReady` — the successful-startup signal, committed only after the Loader tree and launcher-owned setup succeed.
 
@@ -90,7 +90,7 @@ This section explains how the outcomes above are realized and points at the code
 
 ### Parsing contract
 
-The parse path is one small family with two owners: `provideCmdline` freezes the host arguments and provides `cmdlineArgs` and `appExit` before any tree entry mounts, and `parseCmdline` runs your commander program against the immutable arguments, routing every command's help, version, and error output through the launcher. A rejected value, `--help`, or `--version` prints commander's text and requests `ctx.appExit` without publishing anything, so dependent rows never activate; Loader defers each row's `!!js` interpolation until its declared injections are active. Per-export contracts live in the code, not this README — see [`src/index.ts`](src/index.ts).
+The parse path is one small family with two owners: `provideCmdline` freezes the host arguments and launcher name and provides `cmdlineArgs` and `appExit` before any tree entry mounts, and `parseCmdline` runs your commander program against the immutable arguments, routing every command's help, version, and error output through the launcher. A rejected value, `--help`, or `--version` prints commander's text and requests `ctx.appExit` without publishing anything, so dependent rows never activate; Loader defers each row's `!!js` interpolation until its declared injections are active. Per-export contracts live in the code, not this README — see [`src/index.ts`](src/index.ts).
 
 ### Source map
 

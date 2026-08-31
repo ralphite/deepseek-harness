@@ -1,0 +1,137 @@
+name: Release (mydsh Linux binary)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: DeepSeek Harness version to publish as mydsh-v<version>.
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mydsh-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify mydsh release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate tag, package version, and installer default
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="$RELEASE_VERSION"
+          tag="mydsh-v$version"
+          package_version="$(node -p "require('./package.json').version")"
+          installer_version="$(sed -n "s/^MYDSH_DEFAULT_VERSION='\([^']*\)'$/\1/p" scripts/install-mydsh.sh)"
+          [ "$version" = "$package_version" ] || {
+            echo "::error::Tag version $version differs from package version $package_version"
+            exit 1
+          }
+          [ "$version" = "$installer_version" ] || {
+            echo "::error::Tag version $version differs from installer default $installer_version"
+            exit 1
+          }
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            echo "::error::Git tag $tag already exists and will not be overwritten"
+            exit 1
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::GitHub release $tag already exists and will not be overwritten"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build mydsh Linux executables
+    needs: preflight
+    uses: ./.github/workflows/build-exe-for-python-sdk.yml
+    with:
+      targets: node24-linux-x64,node24-linux-arm64
+      mydsh: true
+
+  publish:
+    name: Publish GitHub prerelease
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: github-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: mydsh-linux-*
+          path: dist-mydsh
+          merge-multiple: true
+
+      - name: Verify immutable release assets
+        env:
+          TAG: ${{ needs.preflight.outputs.tag }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(find dist-mydsh -maxdepth 1 -type f -printf '%f\n' | sort)
+          expected=(mydsh-linux-arm64 mydsh-linux-x64)
+          [ "${assets[*]}" = "${expected[*]}" ] || {
+            echo "::error::Expected ${expected[*]}, found ${assets[*]}"
+            exit 1
+          }
+          for asset in "${expected[@]}"; do
+            chmod 0755 "dist-mydsh/$asset"
+            [ -x "dist-mydsh/$asset" ] || {
+              echo "::error::$asset is not executable"
+              exit 1
+            }
+          done
+          [ "$(dist-mydsh/mydsh-linux-x64 --version)" = "$VERSION" ] || {
+            echo "::error::mydsh-linux-x64 version differs from $VERSION"
+            exit 1
+          }
+          (cd dist-mydsh && sha256sum "${expected[@]}" > SHA256SUMS)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::GitHub release $TAG already exists and will not be overwritten"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Git tag $TAG already exists and will not be overwritten"
+            exit 1
+          fi
+
+      - name: Create mydsh prerelease
+        env:
+          TAG: ${{ needs.preflight.outputs.tag }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "mydsh v$VERSION" \
+            --notes "Linux single-file distribution for DeepSeek Harness $VERSION. Supports glibc 2.28+ on x86_64 and arm64." \
+            dist-mydsh/mydsh-linux-x64 \
+            dist-mydsh/mydsh-linux-arm64 \
+            dist-mydsh/SHA256SUMS

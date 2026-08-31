@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseDshArgs } from '../src/args.ts'
+import { resolveLauncherName } from '../src/launcher-name.ts'
 
 const parse = (argv: string[]) => parseDshArgs(argv, '1.2.3')
 
@@ -18,9 +19,29 @@ function exitCode(argv: string[]): number {
   }
 }
 
+/** Capture launcher help for one command name. */
+function help(launcherName: string): string {
+  let output = ''
+  const exit = vi.spyOn(process, 'exit').mockImplementation(() => { throw new Error('exit') })
+  vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => { output += String(chunk); return true })
+  vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => { output += String(chunk); return true })
+  try {
+    parseDshArgs(['--help'], '1.2.3', launcherName)
+  } catch {
+    expect(exit).toHaveBeenCalledWith(0)
+  }
+  return output
+}
+
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('parseDshArgs', () => {
+  it('uses mydsh only for the exact packaged executable basename', () => {
+    expect(resolveLauncherName('/opt/bin/mydsh', true)).toBe('mydsh')
+    expect(resolveLauncherName('/opt/bin/mydsh-linux-x64', true)).toBe('dsh')
+    expect(resolveLauncherName('/opt/bin/mydsh', false)).toBe('dsh')
+  })
+
   it('routes profile boots and the web alias, handing the rest to the app', () => {
     expect(parse(['--profile', 'tui'])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
     expect(parse(['--profile', 'tui', '--patch', 'a.yml', '--patch', 'b.yml']))
@@ -102,5 +123,51 @@ describe('parseDshArgs', () => {
     expect(exitCode(['--help'])).toBe(0)
     expect(exitCode(['-h'])).toBe(0)
     expect(exitCode(['--version'])).toBe(0)
+  })
+
+  it('renders the packaged distribution name throughout launcher help', () => {
+    const output = help('mydsh')
+    expect(output).toMatchInlineSnapshot(`
+      "Usage: mydsh [options] [command] [args...]
+
+      mydsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch
+      layers under your own overrides.
+
+      Arguments:
+        args                        arguments for the booted profile's app (see: mydsh
+                                    --profile <name> --help)
+
+      Options:
+        -V, --version               output the version number
+        --profile <name>            the profile under $DSH_HOME/profiles to boot
+        --patch <path>              extra patch-list overlay applied after the profile
+                                    layer (repeatable)
+        --dump-config               print the composed profile tree and exit
+        --dump-default-config       print the profile tree without its user layer or
+                                    --patch overlays and exit
+
+      Commands:
+        web [options] [args...]     boot the web profile (alias of --profile web); the
+                                    web app's own flags follow
+        plugin [options] [args...]  manage a profile's plugins by forwarding the
+                                    remaining arguments to pnpm in the profile
+                                    directory
+
+      Examples:
+        mydsh --profile web                          boot the web profile (same as: mydsh web)
+        mydsh --profile headless "run the tests"     answer one task, print the result, and exit
+        mydsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
+        mydsh --profile tui --resume <session>       arguments after the launcher flags reach the app
+        mydsh --profile web --help                   the web app's own flags and help
+        mydsh plugin --profile tui add <package>     install a plugin into the tui profile
+
+      "
+    `)
+    expect(output).toContain('Usage: mydsh')
+    expect(output).toContain('mydsh: boot a DeepSeek Harness profile')
+    expect(output).toContain('mydsh --profile headless')
+    expect(output).toContain('same as: mydsh web')
+    expect(output).not.toContain(' dsh --profile')
+    expect(output).not.toMatch(/^dsh: boot a DeepSeek Harness profile/mu)
   })
 })

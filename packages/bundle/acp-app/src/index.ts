@@ -22,14 +22,14 @@ export const ACP_APP_STARTUP_SERVICE = 'acpAppStartup'
  * Build this app's zero-option command and help.
  * @returns a fresh program for one invocation.
  */
-function acpCommand(): Command {
+function acpCommand(launcherName: string): Command {
   return new Command()
-    .name('dsh --profile acp')
+    .name(`${launcherName} --profile acp`)
     .description('Serve automation clients over Agent Client Protocol stdio.')
     .helpOption('-h, --help', 'show this help')
     .addHelpText('after', `
 Example:
-  dsh --profile acp     serve ACP until the client disconnects
+  ${launcherName} --profile acp     serve ACP until the client disconnects
 `)
 }
 
@@ -39,7 +39,7 @@ Example:
  * @param ctx - plugin context carrying command-line and exit launcher values.
  */
 export function apply(ctx: Context): void {
-  const program = acpCommand()
+  const program = acpCommand(ctx.cmdlineArgs?.launcherName() ?? 'dsh')
   program.action(() => {
     exitOnStdinEnd(ctx, 'acp-app.stdin')
     ctx.provide(ACP_APP_STARTUP_SERVICE, { accepted: true })

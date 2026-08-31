@@ -18,6 +18,15 @@ DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来
 
 ## 运行
 
+### 个人 `mydsh` Linux 构建
+
+此 fork 为 glibc 2.28+ Linux（x86_64 或 arm64）发布独立的 `mydsh` 二进制：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ralphite/deepseek-harness/master/scripts/install-mydsh.sh | sh
+mydsh web
+```
+
 ### 通过 `npm` 运行
 
 安装 `Node.js`，然后运行：

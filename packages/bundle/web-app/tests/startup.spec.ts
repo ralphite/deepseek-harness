@@ -34,7 +34,7 @@ afterEach(async () => {
  * @param args - the invocation's inner arguments.
  * @returns the service value and observed consumer/process effects.
  */
-async function bootProvider(args: string[]): Promise<{
+async function bootProvider(args: string[], launcherName?: string): Promise<{
   values: WebStartupValues | undefined
   observed: Observed
 }> {
@@ -76,7 +76,7 @@ export const apply = ctx => globalThis.__webStartupApply(ctx)
   const ctx = new Context()
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
-  provideCmdline(ctx, { args, exit: code => void observed.exits.push(code) })
+  provideCmdline(ctx, { args, ...launcherName === undefined ? {} : { launcherName }, exit: code => void observed.exits.push(code) })
   await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(join(dir, 'cordis.yml')).href } })
   await ctx.loader.await()
   disposers.push(async () => { await ctx.fiber.dispose() })
@@ -124,6 +124,12 @@ describe('web command-line provider', () => {
     expect(values).toBeUndefined()
     expect(observed.readerConfig).toBeUndefined()
     expect(observed.exits).toEqual([0])
+  })
+
+  it('renders the packaged launcher name in app help', async () => {
+    const { observed } = await bootProvider(['--help'], 'mydsh')
+    expect(observed.out).toContain('Usage: mydsh --profile web')
+    expect(observed.out).not.toContain('Usage: dsh --profile web')
   })
 
   it('rejects a non-numeric port before the consumer activates', async () => {

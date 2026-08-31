@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 The `dsh` command is the sole supported Node application launcher: profiles are ordered stacks of plugin-bundle patch layers under the user's own overrides. SDK and ACP are profiles, not separate public bins. The Python runtime wheel packages this same command; the SDK defaults to `sdk`, and the minimal example selects `sdk-minimal`. [`src/args.ts`](src/args.ts) owns the command grammar, and [`src/bin.ts`](src/bin.ts) loads only the selected runner. Invalid commands, options from another mode, configuration errors, and boot failures exit nonzero.
 
+The GitHub Linux single-file distribution installs this launcher as `mydsh`. It keeps the same grammar (`mydsh web`, `mydsh --profile headless "job"`) and renders that name in launcher and app help. npm, source, and Python carriers remain `dsh`. Core profiles need no system Node.js or package manager from the single-file distribution; `mydsh plugin` still requires pnpm because it deliberately forwards package-management arguments.
+
 ## Entry modes
 
 | Command | Purpose |
