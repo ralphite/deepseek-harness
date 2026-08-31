@@ -35,7 +35,7 @@ function runInstaller(options: FixtureOptions = {}) {
   const curlLog = join(root, 'curl.log')
   mkdirSync(fakeBin)
   mkdirSync(installDir, { recursive: true })
-  const version = options.version ?? '0.1.2-alpha.2'
+  const version = options.version ?? '0.1.2-alpha.2-mydsh.1'
   const architecture = options.architecture ?? 'x86_64'
   const asset = `mydsh-linux-${architecture === 'aarch64' || architecture === 'arm64' ? 'arm64' : 'x64'}`
   writeFileSync(fixtureBinary, `#!/bin/sh\nprintf '%s\\n' '${options.binaryVersion ?? version}'\n`, { mode: 0o755 })
@@ -100,9 +100,9 @@ describe.skipIf(process.platform === 'win32')('install-mydsh.sh', () => {
   it.each(['x86_64', 'amd64', 'aarch64', 'arm64'])('installs and verifies the %s release asset', (architecture) => {
     const result = runInstaller({ architecture })
     expect(result.status, result.stderr).toBe(0)
-    expect(result.stdout).toContain('mydsh 0.1.2-alpha.2 installed at')
+    expect(result.stdout).toContain('mydsh 0.1.2-alpha.2-mydsh.1 installed at')
     expect(result.stdout).not.toContain('Add mydsh to PATH:')
-    expect(installedVersion(result.installDir)).toBe('0.1.2-alpha.2')
+    expect(installedVersion(result.installDir)).toBe('0.1.2-alpha.2-mydsh.1')
   })
 
   it('supports an explicit version and prints a PATH instruction only when needed', () => {
@@ -152,7 +152,7 @@ describe.skipIf(process.platform === 'win32')('install-mydsh.sh', () => {
   it('atomically replaces an existing version and removes temporary files', () => {
     const result = runInstaller({ existingInstall: 'old-install' })
     expect(result.status, result.stderr).toBe(0)
-    expect(installedVersion(result.installDir)).toBe('0.1.2-alpha.2')
+    expect(installedVersion(result.installDir)).toBe('0.1.2-alpha.2-mydsh.1')
     expect(readdirSync(result.installDir)).toEqual(['mydsh'])
   })
 
@@ -166,7 +166,7 @@ describe.skipIf(process.platform === 'win32')('install-mydsh.sh', () => {
     })
     if (second.error !== undefined) throw second.error
     expect(second.status, second.stderr).toBe(0)
-    expect(installedVersion(first.installDir)).toBe('0.1.2-alpha.2')
+    expect(installedVersion(first.installDir)).toBe('0.1.2-alpha.2-mydsh.1')
     expect(readdirSync(first.installDir)).toEqual(['mydsh'])
   })
 
@@ -190,7 +190,7 @@ describe.skipIf(process.platform === 'win32')('install-mydsh.sh', () => {
 
   it('pins a checked-in recommended version without querying latest releases', () => {
     const source = readFileSync(installer, 'utf8')
-    expect(source).toContain("MYDSH_DEFAULT_VERSION='0.1.2-alpha.2'")
+    expect(source).toContain("MYDSH_DEFAULT_VERSION='0.1.2-alpha.2-mydsh.1'")
     expect(source).toContain("repository='https://github.com/ralphite/deepseek-harness'")
     expect(source).not.toContain('/releases/latest')
   })

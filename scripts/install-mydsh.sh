@@ -2,7 +2,7 @@
 
 set -eu
 
-MYDSH_DEFAULT_VERSION='0.1.2-alpha.2'
+MYDSH_DEFAULT_VERSION='0.1.2-alpha.2-mydsh.1'
 repository='https://github.com/ralphite/deepseek-harness'
 version=${MYDSH_VERSION:-$MYDSH_DEFAULT_VERSION}
 
