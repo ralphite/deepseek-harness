@@ -36,7 +36,7 @@ try {
 
   server = await startMockLlmServer({
     apiKey,
-    sequence: ['tool_call_success', 'success'],
+    sequence: ['tool_call_success', 'success', 'success'],
     successText,
     toolName: 'bash',
     toolArguments: JSON.stringify({ command: `printf 'landlock-ok\\n' > ${marker}` }),
@@ -65,7 +65,7 @@ try {
   }
   if (result.stdout !== successText) throw new Error(`unexpected Headless output: ${JSON.stringify(result.stdout)}`)
   if (await readFile(marker, 'utf8') !== 'landlock-ok\n') throw new Error('the sandboxed Bash call did not write its marker')
-  if (server.requests.length !== 2) throw new Error(`mock model received ${String(server.requests.length)} requests, expected 2`)
+  if (server.requests.length !== 3) throw new Error(`mock model received ${String(server.requests.length)} requests, expected 3`)
 
   const cacheRoot = join(home, 'cache', 'native-executables')
   const cached = await readdir(cacheRoot, { recursive: true })
