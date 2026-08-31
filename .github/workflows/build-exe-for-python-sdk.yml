@@ -510,7 +510,7 @@ jobs:
       - name: Run sidecar-free Headless and Landlock smoke
         if: inputs.mydsh && runner.os == 'Linux'
         run: >-
-          pnpm exec tsx scripts/smoke-mydsh-headless.ts
+          node --import tsx/esm scripts/smoke-mydsh-headless.ts
           "${{ steps.mydsh.outputs.executable }}"
 
       - name: Run mydsh in a manylinux 2.28 container without runtime dependencies
@@ -533,12 +533,12 @@ jobs:
 
       - name: Install Chromium for the mydsh Web smoke
         if: inputs.mydsh && matrix.target == 'node24-linux-x64'
-        run: pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install --with-deps chromium
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
 
       - name: Run sidecar-free mydsh Web browser and restart smoke
         if: inputs.mydsh && matrix.target == 'node24-linux-x64'
         run: >-
-          pnpm --dir apps/web exec tsx tests/mydsh-release-smoke.ts
+          node --import tsx/esm apps/web/tests/mydsh-release-smoke.ts
           "${{ steps.mydsh.outputs.executable }}"
           "$GITHUB_WORKSPACE/mydsh-web-smoke.png"
 

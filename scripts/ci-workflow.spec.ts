@@ -662,6 +662,7 @@ describe('mydsh GitHub release workflow', () => {
     const nativeSteps: unknown[] = nativeBuild.steps
     const preflightCommands = preflight.steps.filter(isRecord).flatMap(step => typeof step.run === 'string' ? [step.run] : [])
     const publishCommands = publish.steps.filter(isRecord).flatMap(step => typeof step.run === 'string' ? [step.run] : [])
+    const nativeCommands = nativeSteps.filter(isRecord).flatMap(step => typeof step.run === 'string' ? [step.run] : [])
     expect(preflightCommands.join('\n')).toContain('mydsh-v')
     expect(preflightCommands.join('\n')).toContain('MYDSH_DEFAULT_VERSION')
     expect(preflightCommands.join('\n')).toContain('git show-ref --verify')
@@ -684,6 +685,9 @@ describe('mydsh GitHub release workflow', () => {
     expect(nativeStepNames).toContain('Run sidecar-free Headless and Landlock smoke')
     expect(nativeStepNames).toContain('Run mydsh in a manylinux 2.28 container without runtime dependencies')
     expect(nativeStepNames).toContain('Run sidecar-free mydsh Web browser and restart smoke')
+    expect(nativeCommands.join('\n')).toContain('node --import tsx/esm scripts/smoke-mydsh-headless.ts')
+    expect(nativeCommands.join('\n')).toContain('apps/web/node_modules/.bin/playwright install')
+    expect(nativeCommands.join('\n')).toContain('node --import tsx/esm apps/web/tests/mydsh-release-smoke.ts')
   })
 })
 
