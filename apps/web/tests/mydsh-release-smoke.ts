@@ -97,9 +97,20 @@ async function inspectPage(url: string, screenshotPath?: string): Promise<void> 
       if (message.type() === 'error') errors.push(`console: ${message.text()}`)
     })
     page.on('pageerror', (error) => { errors.push(`page: ${String(error)}`) })
+    page.on('requestfailed', (request) => {
+      errors.push(`request: ${request.url()}: ${request.failure()?.errorText ?? 'failed'}`)
+    })
+    page.on('response', (candidate) => {
+      if (candidate.status() >= 400) errors.push(`response: ${candidate.status()} ${candidate.url()}`)
+    })
     const response = await page.goto(url, { waitUntil: 'load', timeout: 60_000 })
     if (response === null || !response.ok()) throw new Error(`mydsh Web returned ${String(response?.status())}`)
-    await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+    try {
+      await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+    } catch (error) {
+      const body = (await page.locator('body').innerText()).slice(0, 4_000)
+      throw new Error(`mydsh Web did not render its application frame: ${String(error)}\nbody:\n${body}\nbrowser errors:\n${errors.join('\n')}`)
+    }
     if (await page.locator('text=Failed to load plugins').count() !== 0) {
       throw new Error('mydsh Web reported a client-plugin load failure')
     }
