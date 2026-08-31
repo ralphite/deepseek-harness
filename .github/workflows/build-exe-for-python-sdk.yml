@@ -200,6 +200,13 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
+      - name: Build static Linux Landlock launcher
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes musl-tools
+          pnpm --dir native/landlock-run run build:native
+
       - name: Rebuild Linux node-pty against manylinux 2.28
         if: runner.os == 'Linux'
         env:

@@ -678,6 +678,8 @@ describe('mydsh GitHub release workflow', () => {
     expect(publishCommands.join('\n')).toContain('dist-mydsh/mydsh-linux-arm64')
     expect(publishCommands.join('\n')).toContain('dist-mydsh/SHA256SUMS')
     const nativeStepNames = nativeSteps.filter(isRecord).flatMap(step => typeof step.name === 'string' ? [step.name] : [])
+    expect(nativeStepNames).toContain('Build static Linux Landlock launcher')
+    expect(nativeCommands.join('\n')).toContain('pnpm --dir native/landlock-run run build:native')
     const glibcCheck = nativeSteps.find(step => isRecord(step) && step.name === 'Check Linux GLIBC requirements')
     expect(JSON.stringify(glibcCheck)).toContain('le 2.28')
     expect(publishCommands.join('\n')).toContain('[ -x "dist-mydsh/$asset" ]')

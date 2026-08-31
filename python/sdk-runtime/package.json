@@ -131,5 +131,9 @@
     "@deepseek-ai/dsh-agent-instructions": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^"
+  },
+  "optionalDependencies": {
+    "@deepseek-ai/node-addon-landlock-run-linux-arm64": "workspace:*",
+    "@deepseek-ai/node-addon-landlock-run-linux-x64": "workspace:*"
   }
 }

@@ -10811,6 +10811,13 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: link:../../vendor/schemastery
         version: link:../../vendor/schemastery
+    optionalDependencies:
+      '@deepseek-ai/node-addon-landlock-run-linux-arm64':
+        specifier: workspace:*
+        version: link:../../native/landlock-run/packages/linux-arm64
+      '@deepseek-ai/node-addon-landlock-run-linux-x64':
+        specifier: workspace:*
+        version: link:../../native/landlock-run/packages/linux-x64
 
   vendor/cordis:
     dependencies:
