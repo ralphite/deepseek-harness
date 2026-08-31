@@ -36,7 +36,7 @@ try {
 
   server = await startMockLlmServer({
     apiKey,
-    sequence: ['tool_call_success', 'success', 'success'],
+    sequence: ['success', 'tool_call_success', 'success'],
     successText,
     toolName: 'bash',
     toolArguments: JSON.stringify({ command: `printf 'landlock-ok\\n' > ${marker}` }),
