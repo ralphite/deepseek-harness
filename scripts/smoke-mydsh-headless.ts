@@ -70,6 +70,19 @@ try {
     throw new Error(`mydsh Headless exited ${String(result.exitCode)}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
   }
   if (result.stdout !== successText) throw new Error(`unexpected Headless output: ${JSON.stringify(result.stdout)}`)
+  if (!existsSync(marker)) {
+    const requests = server.requests.map((request) => {
+      const messages = typeof request.body === 'object' && request.body !== null && 'messages' in request.body
+        ? request.body.messages
+        : undefined
+      return {
+        attempt: request.attempt,
+        behavior: request.behavior,
+        messages: Array.isArray(messages) ? messages.slice(-2) : messages,
+      }
+    })
+    throw new Error(`the sandboxed Bash call did not write its marker\nrequests:\n${JSON.stringify(requests, null, 2)}\nstderr:\n${result.stderr}`)
+  }
   if (await readFile(marker, 'utf8') !== 'landlock-ok\n') throw new Error('the sandboxed Bash call did not write its marker')
   if (server.requests.length !== 2) throw new Error(`mock model received ${String(server.requests.length)} requests, expected 2`)
 
