@@ -93,6 +93,7 @@ async function inspectPage(url: string, screenshotPath?: string): Promise<void> 
   try {
     const page = await browser.newPage({ locale: 'en-US' })
     const errors: string[] = []
+    const pluginResponses: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(`console: ${message.text()}`)
     })
@@ -101,6 +102,9 @@ async function inspectPage(url: string, screenshotPath?: string): Promise<void> 
       errors.push(`request: ${request.url()}: ${request.failure()?.errorText ?? 'failed'}`)
     })
     page.on('response', (candidate) => {
+      if (new URL(candidate.url()).pathname.startsWith('/plugins/')) {
+        pluginResponses.push(`${String(candidate.status())} ${candidate.url()}`)
+      }
       if (candidate.status() >= 400) errors.push(`response: ${candidate.status()} ${candidate.url()}`)
     })
     const response = await page.goto(url, { waitUntil: 'load', timeout: 60_000 })
@@ -109,7 +113,20 @@ async function inspectPage(url: string, screenshotPath?: string): Promise<void> 
       await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     } catch (error) {
       const body = (await page.locator('body').innerText()).slice(0, 4_000)
-      throw new Error(`mydsh Web did not render its application frame: ${String(error)}\nbody:\n${body}\nbrowser errors:\n${errors.join('\n')}`)
+      const scriptSources = await page.locator('head script[src]').evaluateAll(
+        scripts => scripts.map(script => (script as HTMLScriptElement).src),
+      )
+      const scripts = await Promise.all(scriptSources.map(async (src) => {
+        const script = await page.request.get(src)
+        return `${String(script.status())} ${src}\n${(await script.text()).slice(0, 500)}`
+      }))
+      throw new Error(
+        `mydsh Web did not render its application frame: ${String(error)}`
+        + `\nbody:\n${body}`
+        + `\nplugin responses:\n${pluginResponses.join('\n')}`
+        + `\nhead scripts:\n${scripts.join('\n---\n')}`
+        + `\nbrowser errors:\n${errors.join('\n')}`,
+      )
     }
     if (await page.locator('text=Failed to load plugins').count() !== 0) {
       throw new Error('mydsh Web reported a client-plugin load failure')

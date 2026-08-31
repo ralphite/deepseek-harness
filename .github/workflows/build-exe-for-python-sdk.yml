@@ -538,6 +538,14 @@ jobs:
             PATH=/tmp/empty-path /tmp/mydsh --version
           '
 
+      - uses: actions/upload-artifact@v7
+        if: inputs.mydsh && runner.os == 'Linux'
+        with:
+          name: ${{ steps.mydsh.outputs.asset }}
+          path: dist-mydsh/${{ steps.mydsh.outputs.asset }}
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Install Chromium for the mydsh Web smoke
         if: inputs.mydsh && matrix.target == 'node24-linux-x64'
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
@@ -554,14 +562,6 @@ jobs:
         with:
           name: mydsh-web-smoke
           path: mydsh-web-smoke.png
-          if-no-files-found: error
-          retention-days: 7
-
-      - uses: actions/upload-artifact@v7
-        if: inputs.mydsh && runner.os == 'Linux'
-        with:
-          name: ${{ steps.mydsh.outputs.asset }}
-          path: dist-mydsh/${{ steps.mydsh.outputs.asset }}
           if-no-files-found: error
           retention-days: 7
 
