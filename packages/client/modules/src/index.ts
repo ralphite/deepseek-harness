@@ -233,6 +233,29 @@ function clientExportOf(pkgName: string, exportsField: unknown): string | undefi
   throw new Error(`client-modules: ${pkgName} exports["./client"] must be a string or an object with a string default`)
 }
 
+/** Resolve the original client bundle recorded by a packaged-executable module proxy. */
+function moduleFallbackClientPath(pkgName: string, dsh: Record<string, unknown>): string | undefined {
+  const fallback = dsh.moduleFallback
+  if (fallback === undefined) return undefined
+  if (typeof fallback !== 'object' || fallback === null) {
+    throw new Error(`client-modules: ${pkgName} dsh.moduleFallback must be an object`)
+  }
+  const targets = (fallback as Record<string, unknown>).targets
+  if (typeof targets !== 'object' || targets === null) {
+    throw new Error(`client-modules: ${pkgName} dsh.moduleFallback.targets must be an object`)
+  }
+  const target = (targets as Record<string, unknown>)['./client']
+  if (target === undefined) return undefined
+  if (typeof target !== 'string') {
+    throw new Error(`client-modules: ${pkgName} dsh.moduleFallback.targets["./client"] must be a string`)
+  }
+  const url = new URL(target)
+  if (url.protocol !== 'file:') {
+    throw new Error(`client-modules: ${pkgName} packaged client target must be a file URL`)
+  }
+  return fileURLToPath(url)
+}
+
 /** sha1 content hash shortened to 12 hex chars (combo / graph / rebuilt-artifact rev). */
 function shortHash(input: string | Buffer): string {
   return createHash('sha1').update(input).digest('hex').slice(0, HASH_REVISION_LENGTH)
@@ -749,9 +772,10 @@ export class ClientModuleRegistry extends Service {
     const { packageName, path: pkgPath } = located
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     const dsh = pkg.dsh
+    const dshRecord = dsh !== null && typeof dsh === 'object' ? dsh as Record<string, unknown> : undefined
     const decl = parseDshClient(
       packageName,
-      dsh !== null && typeof dsh === 'object' ? (dsh as Record<string, unknown>).client : undefined,
+      dshRecord?.client,
     )
     if (decl === undefined || decl.platform !== 'web') {
       this.pkgMeta.set(sourceKey, null)
@@ -762,7 +786,9 @@ export class ClientModuleRegistry extends Service {
       throw new Error(`client-modules: ${packageName} declares dsh.client but exports no "./client" bundle`)
     }
     const meta: PkgMeta = {
-      clientPath: join(dirname(pkgPath), clientRel),
+      clientPath: dshRecord === undefined
+        ? join(dirname(pkgPath), clientRel)
+        : moduleFallbackClientPath(packageName, dshRecord) ?? join(dirname(pkgPath), clientRel),
       ...(decl.inject !== undefined ? { inject: decl.inject } : {}),
       external: decl.external ?? [],
       immediately: decl.immediately === true,

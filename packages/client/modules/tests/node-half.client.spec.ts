@@ -272,6 +272,26 @@ describe('client bundle activation', () => {
     },
   )
 
+  it('reads a packaged module proxy declaration while serving its original client bundle', () => {
+    const packageName = '@fixture/sea-module-proxy'
+    const originalClientPath = writePackage('@fixture/sea-module-source')
+    mkdirSync(dirname(originalClientPath), { recursive: true })
+    writeFileSync(originalClientPath, 'module.exports = { original: true }\n')
+    const proxyClientPath = writePackage(packageName, {
+      dsh: {
+        client: { platform: 'web' },
+        moduleFallback: { targets: { './client': pathToFileURL(originalClientPath).href } },
+      },
+    })
+    mkdirSync(dirname(proxyClientPath), { recursive: true })
+    writeFileSync(proxyClientPath, 'export * from "file:///proxy-client.js"\n')
+
+    const service = construct([packageName])
+
+    expect(service.clientPath(packageName)).toBe(originalClientPath)
+    expect(service.graph().entries.map(entry => entry.id)).toEqual([packageName])
+  })
+
   it('derives the browser module id from a file entry owning manifest', () => {
     const packageName = '@fixture/file-entry'
     const clientPath = writePackage(packageName)

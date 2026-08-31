@@ -662,11 +662,14 @@ describe('healProfilesModuleFallback', () => {
     const bundleManifest = JSON.parse(readFileSync(join(bundleDir, 'package.json'), 'utf8')) as Record<string, unknown>
     bundleManifest.exports = {
       '.': './index.js',
+      './client': './client.js',
       './feature': './feature.js',
       './legacy/': './legacy/',
       './types': { types: './feature.d.ts' },
     }
+    bundleManifest.dsh = { client: { platform: 'web', immediately: true } }
     writeFileSync(join(bundleDir, 'package.json'), JSON.stringify(bundleManifest))
+    writeFileSync(join(bundleDir, 'client.js'), 'module.exports = {}\n')
     writeFileSync(join(bundleDir, 'feature.js'), 'export const feature = "proxied"\n')
     const home = tmp()
     Object.defineProperty(process, 'pkg', { configurable: true, value: {} })
@@ -678,15 +681,20 @@ describe('healProfilesModuleFallback', () => {
       const proxyManifest = JSON.parse(readFileSync(join(proxy, 'package.json'), 'utf8')) as {
         version: unknown
         exports: unknown
-        dsh: { moduleFallback: { targets: Record<string, unknown> } }
+        dsh: {
+          client?: unknown
+          moduleFallback: { targets: Record<string, unknown> }
+        }
       }
       expect(proxyManifest).toMatchObject({
         version: '0.0.0',
-        exports: { '.': './entry-0.js', './feature': './entry-1.js' },
+        exports: { '.': './entry-0.js', './client': './entry-1.js', './feature': './entry-2.js' },
+        dsh: { client: { platform: 'web', immediately: true } },
       })
       expect(proxyManifest.dsh.moduleFallback.targets['.']).toEqual(expect.stringContaining('/bundle-a/index.js'))
+      expect(proxyManifest.dsh.moduleFallback.targets['./client']).toEqual(expect.stringContaining('/bundle-a/client.js'))
       await expect(import(join(proxy, 'entry-0.js'))).resolves.toMatchObject({ packageName: 'bundle-a' })
-      await expect(import(join(proxy, 'entry-1.js'))).resolves.toMatchObject({ feature: 'proxied' })
+      await expect(import(join(proxy, 'entry-2.js'))).resolves.toMatchObject({ feature: 'proxied' })
       await healProfilesModuleFallback({ installAnchor: anchor, home })
     } finally {
       delete (process as NodeJS.Process & { pkg?: unknown }).pkg

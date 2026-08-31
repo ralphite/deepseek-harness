@@ -335,12 +335,18 @@ interface ModuleProxyManifest {
   private: true
   type: 'module'
   exports: Record<string, string>
-  dsh: { moduleFallback: { targets: Record<string, string> } }
+  dsh: {
+    client?: unknown
+    moduleFallback: { targets: Record<string, string> }
+  }
 }
 
 interface ModuleProxyRecord {
   version?: unknown
-  dsh?: { moduleFallback?: { targets?: unknown } }
+  dsh?: {
+    client?: unknown
+    moduleFallback?: { targets?: unknown }
+  }
 }
 
 /** Return whether the process reads application modules from pkg's virtual filesystem. */
@@ -379,9 +385,10 @@ function packageEntryFromPackage(
 function packageProxySource(
   packageName: string,
   packageDir: string,
-): { version: string; targets: Record<string, string> } {
+): { version: string; targets: Record<string, string>; client?: unknown } {
   const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
     bin?: unknown
+    dsh?: { client?: unknown }
     exports?: unknown
     main?: unknown
     types?: unknown
@@ -397,11 +404,19 @@ function packageProxySource(
     const entry = join(packageDir, main ?? 'index')
     try {
       const resolved = createRequire(join(packageDir, 'package.json')).resolve(entry)
-      return { version: manifest.version, targets: { '.': pathToFileURL(resolved).href } }
+      return {
+        version: manifest.version,
+        targets: { '.': pathToFileURL(resolved).href },
+        ...(manifest.dsh?.client === undefined ? {} : { client: manifest.dsh.client }),
+      }
     } catch (error) {
       if (main === undefined
         && (manifest.bin !== undefined || manifest.types !== undefined || manifest.typings !== undefined)) {
-        return { version: manifest.version, targets: {} }
+        return {
+          version: manifest.version,
+          targets: {},
+          ...(manifest.dsh?.client === undefined ? {} : { client: manifest.dsh.client }),
+        }
       }
       throw new Error(`dsh: installed package ${packageName} main entry is missing at ${entry}`, { cause: error })
     }
@@ -422,20 +437,26 @@ function packageProxySource(
     )
     if (target !== undefined) targets[subpath] = target
   }
-  return { version: manifest.version, targets }
+  return {
+    version: manifest.version,
+    targets,
+    ...(manifest.dsh?.client === undefined ? {} : { client: manifest.dsh.client }),
+  }
 }
 
 /**
  * Materialize a real package proxy whose exports retain pkg's virtual module
  * URL. Files outside the executable cannot traverse a symlink into
  * `/snapshot`, while an ESM re-export can import that URL and preserves the
- * executable's single module instance for out-of-tree plugin peers.
+ * executable's single module instance for out-of-tree plugin peers. Client
+ * metadata retains the original `./client` target for browser bundle serving.
  */
 function ensureModuleProxy(
   link: string,
   packageName: string,
   version: string,
   targets: Record<string, string>,
+  client?: unknown,
 ): void {
   const proxyExports = Object.fromEntries(
     Object.keys(targets).map((subpath, index) => [subpath, `./entry-${index}.js`]),
@@ -446,7 +467,10 @@ function ensureModuleProxy(
     private: true,
     type: 'module',
     exports: proxyExports,
-    dsh: { moduleFallback: { targets } },
+    dsh: {
+      ...(client === undefined ? {} : { client }),
+      moduleFallback: { targets },
+    },
   }
   let stat
   try {
@@ -465,6 +489,7 @@ function ensureModuleProxy(
     }
     if (existing.version === version
       && JSON.stringify(existing.dsh.moduleFallback.targets) === JSON.stringify(targets)
+      && JSON.stringify(existing.dsh.client) === JSON.stringify(client)
       && Object.keys(targets).every((_, index) => existsSync(join(link, `entry-${index}.js`)))) return
     rmSync(link, { recursive: true })
   }
@@ -481,7 +506,7 @@ function ensureModuleProxy(
 
 type ModuleFallbackEntry =
   | { kind: 'symlink'; packageName: string; packageDir: string }
-  | { kind: 'proxy'; packageName: string; version: string; targets: Record<string, string> }
+  | { kind: 'proxy'; packageName: string; version: string; targets: Record<string, string>; client?: unknown }
 
 /** Read one package manifest used while traversing a module-fallback dependency graph. */
 function readModuleFallbackManifest(anchor: string): ProfileManifest {
@@ -526,7 +551,13 @@ function resolveModuleFallbackEntries(
       const source = packageProxySource(packageName, packageDir)
       return Object.keys(source.targets).length === 0
         ? []
-        : [{ kind: 'proxy' as const, packageName, version: source.version, targets: source.targets }]
+        : [{
+          kind: 'proxy' as const,
+          packageName,
+          version: source.version,
+          targets: source.targets,
+          ...(source.client === undefined ? {} : { client: source.client }),
+        }]
     })
   return { entries, packageNames: new Set(links.keys()) }
 }
@@ -543,6 +574,7 @@ function moduleFallbackEntryCurrent(modulesDir: string, entry: ModuleFallbackEnt
     const existing = readModuleProxyRecord(link)
     return existing?.version === entry.version
       && JSON.stringify(existing.dsh?.moduleFallback?.targets) === JSON.stringify(entry.targets)
+      && JSON.stringify(existing.dsh?.client) === JSON.stringify(entry.client)
       && Object.keys(entry.targets).every((_, index) => existsSync(join(link, `entry-${index}.js`)))
   } catch {
     return false
@@ -597,7 +629,7 @@ function healProfilesModuleFallbackLocked(entries: readonly ModuleFallbackEntry[
     const link = join(modulesDir, entry.packageName)
     mkdirSync(dirname(link), { recursive: true })
     if (entry.kind === 'proxy') {
-      ensureModuleProxy(link, entry.packageName, entry.version, entry.targets)
+      ensureModuleProxy(link, entry.packageName, entry.version, entry.targets, entry.client)
     } else {
       ensureSymlink(link, entry.packageDir)
     }
