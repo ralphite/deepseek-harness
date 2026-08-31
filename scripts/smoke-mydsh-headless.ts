@@ -1,7 +1,7 @@
 /** Keyless release smoke for the sidecar-free mydsh Headless application. */
 
 import { constants, existsSync } from 'node:fs'
-import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink } from 'node:fs/promises'
+import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
 import { startMockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
@@ -16,12 +16,14 @@ const home = join(root, 'home')
 const workspace = join(root, 'workspace')
 const hostBin = join(root, 'host-bin')
 const marker = join(workspace, 'landlock-marker.txt')
+const patch = join(root, 'headless.cordis.patch.yml')
 const apiKey = 'mydsh-keyless-smoke'
 const successText = 'MYDSH_HEADLESS_OK'
 
 let server: Awaited<ReturnType<typeof startMockLlmServer>> | undefined
 try {
   await Promise.all([mkdir(workspace), mkdir(hostBin)])
+  await writeFile(patch, '- id: session-title-llm\n  disabled: true\n')
   await copyFile(resolve(source), executable, constants.COPYFILE_FICLONE)
   await chmod(executable, 0o755)
   for (const [name, candidates] of [
@@ -36,13 +38,14 @@ try {
 
   server = await startMockLlmServer({
     apiKey,
-    sequence: ['success', 'tool_call_success', 'success'],
+    sequence: ['tool_call_success', 'success'],
     successText,
     toolName: 'bash',
     toolArguments: JSON.stringify({ command: `printf 'landlock-ok\\n' > ${marker}` }),
   })
   const result = await execa(executable, [
     '--profile', 'headless',
+    '--patch', patch,
     'Use bash once to write the requested marker, then report the model result.',
   ], {
     cwd: workspace,
@@ -65,7 +68,7 @@ try {
   }
   if (result.stdout !== successText) throw new Error(`unexpected Headless output: ${JSON.stringify(result.stdout)}`)
   if (await readFile(marker, 'utf8') !== 'landlock-ok\n') throw new Error('the sandboxed Bash call did not write its marker')
-  if (server.requests.length !== 3) throw new Error(`mock model received ${String(server.requests.length)} requests, expected 3`)
+  if (server.requests.length !== 2) throw new Error(`mock model received ${String(server.requests.length)} requests, expected 2`)
 
   const cacheRoot = join(home, 'cache', 'native-executables')
   const cached = await readdir(cacheRoot, { recursive: true })
