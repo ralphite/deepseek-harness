@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-executable-asset",
   "description": "Materializes executables embedded in packaged runtimes into a verified content-addressed cache",
-  "version": "0.1.2-alpha.2-mydsh.1",
+  "version": "0.1.2-alpha.3",
   "publishConfig": {
     "access": "public"
   },
