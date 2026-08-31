@@ -109,7 +109,12 @@ async function openWorkspaceDirectoryDialog(page: Page): Promise<Locator> {
       await providerSetup.waitFor({ state: 'hidden', timeout: 10_000 })
       continue
     }
-    await addWorkspace.click()
+    try {
+      await addWorkspace.click({ timeout: 2_000 })
+    } catch (error) {
+      if (await testingNotice.isVisible() || await providerSetup.isVisible()) continue
+      throw error
+    }
     await Promise.race([
       directoryDialog.waitFor({ state: 'visible', timeout: 10_000 }),
       testingNotice.waitFor({ state: 'visible', timeout: 10_000 }),
