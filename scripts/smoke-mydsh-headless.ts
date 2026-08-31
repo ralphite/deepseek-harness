@@ -41,7 +41,10 @@ try {
     sequence: ['tool_call_success', 'success'],
     successText,
     toolName: 'bash',
-    toolArguments: JSON.stringify({ command: `printf 'landlock-ok\\n' > ${marker}` }),
+    toolArguments: JSON.stringify({
+      command: `printf 'landlock-ok\\n' > ${marker}`,
+      description: 'Write the Landlock smoke marker',
+    }),
   })
   const result = await execa(executable, [
     '--profile', 'headless',
