@@ -129,7 +129,7 @@ describe('preset discovery', () => {
 
   it('ignores a plain file sitting beside the preset directories', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-presets-'))
-    await writeFile(join(root, 'stray.yml'), '- id: x\n')
+    await writeFile(join(root, 'stray'), '- id: x\n')
     await mkdir(join(root, 'real'))
     await writeFile(join(root, 'real', COMPOSITION_FILE), '[]\n')
 

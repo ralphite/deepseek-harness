@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-mydsh-linux-single-file-distribution.md
-2026-08-30-mydsh-linux-single-file-distribution.md: 06e0858ee14edff4a0c708be3bd119bc8671cd22
-2026-08-30-mydsh-linux-single-file-distribution.zh.md: ab15c8a91c69ad56aa223510fa170c360c5a1915
+2026-08-30-mydsh-linux-single-file-distribution.md: 253dbdfbc95eafbf61ab83c7a9eac3fb70768962
+2026-08-30-mydsh-linux-single-file-distribution.zh.md: 6c175f05f8c21082206bc6f4ddf236e6a3c673cc

@@ -12,6 +12,8 @@ Linux 用户需要一种稳定的 `curl | sh` 安装方式，在无 Node、npm�
 
 现有 pkg 流水线为 glibc 2.28 或更新版本额外产出无伴随文件的 `mydsh-linux-x64` 与 `mydsh-linux-arm64`。Ripgrep 和 Landlock launcher 作为 pkg 资源内置。当打包进程不带 Python wheel 伴随文件时，对应 consumer 会对内置字节计算散列，校验已有缓存文件为普通非符号链接，否则将可执行文件原子写入 `$DSH_HOME/cache/native-executables/<sha256>/`。Python 运行时 wheel 保留外置原生文件并优先选择它们。
 
+打包后的 agent preset 扫描器枚举内置目录名称，并用 `lstat` 读取每个条目。pkg 6.21.0 的 SEA 虚拟文件系统即使在 `readdir` 请求 `withFileTypes` 时仍返回名称，因此将这些结果视为 `Dirent` 对象会阻止每个 Web 工作区创建初始 Session。
+
 仅当可执行文件的精确打包基名为 `mydsh` 时，根命令、Web、Headless、SDK 与 ACP 帮助才使用 `mydsh`。npm bin 仍为 `dsh`，产品、profile、包与协议标识均不变。`CmdlineHost` 向应用帮助 consumer 传递只读 launcher 名称，并默认为 `dsh`。
 
 [`scripts/install-mydsh.sh`](../../../../scripts/install-mydsh.sh) 将 Linux x86_64 与 arm64 主机映射到两个产物，拒绝非 glibc 系统和低于 glibc 2.28 的版本，下载显式版本及 `SHA256SUMS`，校验摘要，运行候选文件的 `--version`，再原子替换 `$HOME/.local/bin/mydsh` 或 `MYDSH_INSTALL_DIR/mydsh`。`MYDSH_VERSION` 可选择旧的已发布版本。脚本不修改 shell 配置、不请求 sudo，也不调用 GitHub latest-release API；检入的默认值就是推荐版本。
@@ -38,4 +40,4 @@ Linux 用户需要一种稳定的 `curl | sh` 安装方式，在无 Node、npm�
 
 ## 测试
 
-安装脚本测试覆盖架构与 glibc 检测、版本与目录覆盖、校验和自检失败、保留已安装二进制、PATH 提示与临时文件清理。包测试覆盖 launcher 名称传递与可执行缓存完整性。发布 job 在原生 Linux 与 manylinux 2.28 中以无 Node、npm、pnpm 或 Python 的方式运行二进制，检查帮助与版本输出，执行 keyless Headless 与原生 helper 场景，并在同一 Harness home 上启动和重启 Web，同时由浏览器自动化拒绝页面与控制台错误。
+安装脚本测试覆盖架构与 glibc 检测、版本与目录覆盖、校验和自检失败、保留已安装二进制、PATH 提示与临时文件清理。包测试覆盖 launcher 名称传递与可执行缓存完整性。发布 job 在原生 Linux 与 manylinux 2.28 中以无 Node、npm、pnpm 或 Python 的方式运行二进制，检查帮助与版本输出，执行 keyless Headless 与原生 helper 场景，通过浏览器创建并选中可用的 Web 工作区与初始 Session，再使用同一 Harness home 重启，并要求该状态保持可用且不存在页面或控制台错误。

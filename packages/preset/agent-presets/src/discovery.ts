@@ -22,7 +22,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { lstat, readdir, readFile, stat } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -293,15 +293,17 @@ export async function scanRoot(root: PresetRoot, harnessBase: string): Promise<A
   const dir = resolve(expandHomePath(root.path))
   let children
   try {
-    children = await readdir(dir, { withFileTypes: true })
+    // pkg 6.21.0's SEA VFS drops readdir's withFileTypes option; names plus lstat keep packaged and Node scans equivalent.
+    children = await readdir(dir)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
     throw new Error(`agent-presets: cannot read preset root ${dir}: ${String(error)}`, { cause: error })
   }
   const found: AgentPreset[] = []
   for (const child of children) {
-    if (!child.isDirectory() || !PRESET_ID.test(child.name)) continue
-    const directory = join(dir, child.name)
+    if (!PRESET_ID.test(child)) continue
+    const directory = join(dir, child)
+    if (!(await lstat(directory)).isDirectory()) continue
     const path = join(directory, COMPOSITION_FILE)
     const broken = await isFile(path)
       ? await compositionProblem(path, harnessBase)
@@ -310,7 +312,7 @@ export async function scanRoot(root: PresetRoot, harnessBase: string): Promise<A
     // still mounts, it just shows its id.
     const metadata = await readPresetMetadata(directory)
     found.push({
-      id: child.name, trust: root.trust, path, ...metadata,
+      id: child, trust: root.trust, path, ...metadata,
       ...broken === undefined ? {} : { broken },
     })
   }
